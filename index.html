@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>LUGARES — Worker Panel</title>
+<link href="w,style.css" rel="stylesheet"/>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAAy3aAw533l-TTFfg8L3itnzeserDFjhU",
+      authDomain: "lugar-1ec3b.firebaseapp.com",
+      databaseURL: "https://lugar-1ec3b-default-rtdb.firebaseio.com",
+      projectId: "lugar-1ec3b",
+      storageBucket: "lugar-1ec3b.firebasestorage.app",
+      messagingSenderId: "955939000236",
+      appId: "1:955939000236:web:72da6c2ef877113e18b409",
+      measurementId: "G-YR38SG6KXM"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+  </script>
+</head>
+<body>
+
+<!-- LOCK SCREEN -->
+<div id="lockScreen">
+  <div class="lock-logo"><img src="Lugares Logo.png" alt="LUGARES Logo"></div>
+  <div class="lock-title">LUGARES Group · Worker Panel</div>
+  <div class="lock-sub">Enter Access PIN</div>
+  <div class="lock-dots">
+    <div class="lock-dot" id="d0"></div>
+    <div class="lock-dot" id="d1"></div>
+    <div class="lock-dot" id="d2"></div>
+    <div class="lock-dot" id="d3"></div>
+  </div>
+  <div class="lock-keypad">
+    <button class="lock-key" onclick="pinKey('1')">1</button>
+    <button class="lock-key" onclick="pinKey('2')">2</button>
+    <button class="lock-key" onclick="pinKey('3')">3</button>
+    <button class="lock-key" onclick="pinKey('4')">4</button>
+    <button class="lock-key" onclick="pinKey('5')">5</button>
+    <button class="lock-key" onclick="pinKey('6')">6</button>
+    <button class="lock-key" onclick="pinKey('7')">7</button>
+    <button class="lock-key" onclick="pinKey('8')">8</button>
+    <button class="lock-key" onclick="pinKey('9')">9</button>
+    <button class="lock-key lock-clear" onclick="pinClear()">Clear</button>
+    <button class="lock-key" onclick="pinKey('0')">0</button>
+    <button class="lock-key lock-clear" onclick="pinBack()">⌫</button>
+  </div>
+  <div class="lock-error" id="lockError"></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="header-logo"><img src="Lugares Logo.png" alt="LUGARES Logo"></div>
+    <span class="header-name">LUGARES</span>
+    <span class="header-badge">WORKER PANEL</span>
+    <div class="header-right">
+      <button id="backBtn" onclick="goBack()">← Dashboard</button>
+      <button id="menuBtn" onclick="openSidebar()">☰ Menu</button>
+    </div>
+  </header>
+
+  <div id="overlay" onclick="closeSidebar()"></div>
+
+  <div id="sidebar">
+    <div class="sb-label">Navigation</div>
+    <button class="sb-item active" id="sb-dashboard" onclick="showPanel('dashboard')"><span class="sb-icon">📊</span>Dashboard</button>
+    <button class="sb-item" id="sb-requests" onclick="showPanel('requests')"><span class="sb-icon">📨</span>Requests<span class="sb-badge" id="unreadBadge" style="display:none">0</span></button>
+    <div class="sb-divider"></div>
+    <div class="sb-label">Manage</div>
+    <button class="sb-item" id="sb-services" onclick="showPanel('services')"><span class="sb-icon">⚙️</span>Services</button>
+    <button class="sb-item" id="sb-projects" onclick="showPanel('projects')"><span class="sb-icon">🏗️</span>Projects</button>
+    <button class="sb-item" id="sb-staff" onclick="showPanel('staff')"><span class="sb-icon">👤</span>Staff</button>
+    <button class="sb-item" id="sb-executive" onclick="showPanel('executive')"><span class="sb-icon">🎖️</span>Executive</button>
+    <div class="sb-divider"></div>
+    <div class="sb-label">Settings</div>
+    <button class="sb-item" onclick="openPinModal()"><span class="sb-icon">🔑</span>Change PIN</button>
+    <button class="sb-item" onclick="clearAll()" style="color:var(--danger)"><span class="sb-icon">🗑️</span>Clear All Data</button>
+  </div>
+
+  <div id="main">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="dashboardPanel">
+      <div class="panel-title">Dashboard</div>
+      <div class="panel-sub">Command Centre · LUGARES Group</div>
+      <div class="dash-grid">
+        <div class="dash-card" onclick="showPanel('requests')">
+          <div class="dash-icon">📨</div>
+          <span class="dash-number" id="dReq">0</span>
+          <div class="dash-label">Requests</div>
+        </div>
+        <div class="dash-card" onclick="showPanel('services')">
+          <div class="dash-icon">⚙️</div>
+          <span class="dash-number" id="dSvc">0</span>
+          <div class="dash-label">Services</div>
+        </div>
+        <div class="dash-card" onclick="showPanel('projects')">
+          <div class="dash-icon">🏗️</div>
+          <span class="dash-number" id="dPrj">0</span>
+          <div class="dash-label">Projects</div>
+        </div>
+        <div class="dash-card" onclick="showPanel('staff')">
+          <div class="dash-icon">👤</div>
+          <span class="dash-number" id="dStf">0</span>
+          <div class="dash-label">Staff</div>
+        </div>
+        <div class="dash-card" onclick="showPanel('executive')">
+          <div class="dash-icon">🎖️</div>
+          <span class="dash-number" id="dExc">0</span>
+          <div class="dash-label">Executives</div>
+        </div>
+      </div>
+      <div class="dash-title">Recent Requests</div>
+      <div id="recentActivity"></div>
+    </div>
+
+    <!-- REQUESTS -->
+    <div class="panel" id="requestsPanel">
+      <div class="panel-title">Customer Requests</div>
+      <div class="panel-sub">All incoming inquiries</div>
+      <div class="req-toolbar">
+        <span id="reqCount" style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text3)"></span>
+        <button class="btn-remove" onclick="clearRequests()" style="font-size:12px;padding:8px 14px">Clear All Requests</button>
+      </div>
+      <div id="reqList"></div>
+    </div>
+
+    <!-- SERVICES -->
+    <div class="panel" id="servicesPanel">
+      <div class="panel-title">Manage Services</div>
+      <div class="panel-sub">Add custom services to customer portal</div>
+      <div class="form-section">
+        <div class="form-section-title">Add New Service</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Service Name</label><input type="text" class="form-control" id="svcName" placeholder="e.g. Smart Building Systems"/></div>
+          <div class="form-group"><label class="form-label">Category Tag</label><input type="text" class="form-control" id="svcTag" placeholder="e.g. ICT, Construction"/></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Icon (emoji)</label><input type="text" class="form-control" id="svcIcon" placeholder="e.g. 🔧" maxlength="4"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-control" id="svcDesc" placeholder="Brief description of the service"/></div>
+        <button class="btn-add" onclick="addService()">+ Add Service</button>
+        <div class="live-list" id="svcList"></div>
+      </div>
+      <button class="btn-publish" onclick="publishAll()">✓ Publish to Portal</button>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="panel" id="projectsPanel">
+      <div class="panel-title">Manage Projects</div>
+      <div class="panel-sub">Add infrastructure & cyber projects</div>
+      <div class="form-section">
+        <div class="form-section-title">Add New Project</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Project Name</label><input type="text" class="form-control" id="prjName" placeholder="e.g. Nairobi Ring Road Phase 2"/></div>
+          <div class="form-group"><label class="form-label">Status</label>
+            <select class="form-control" id="prjStatus">
+              <option>In Progress</option><option>Completed</option><option>Upcoming</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Location</label><input type="text" class="form-control" id="prjLocation" placeholder="e.g. Nairobi County"/></div>
+          <div class="form-group"><label class="form-label">Category</label><input type="text" class="form-control" id="prjCat" placeholder="e.g. Road Network"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-control" id="prjDesc" placeholder="Brief project overview"/></div>
+        <button class="btn-add" onclick="addProject()">+ Add Project</button>
+        <div class="live-list" id="prjList"></div>
+      </div>
+      <button class="btn-publish" onclick="publishAll()">✓ Publish to Portal</button>
+    </div>
+
+    <!-- STAFF -->
+    <div class="panel" id="staffPanel">
+      <div class="panel-title">Manage Staff</div>
+      <div class="panel-sub">Add staff members visible on customer portal</div>
+      <div class="form-section">
+        <div class="form-section-title">Add Staff Member</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-control" id="stfName" placeholder="Full name"/></div>
+          <div class="form-group"><label class="form-label">Job Role</label><input type="text" class="form-control" id="stfRole" placeholder="e.g. Site Engineer"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">Department</label><input type="text" class="form-control" id="stfDept" placeholder="e.g. Infrastructure Division"/></div>
+        <button class="btn-add" onclick="addStaff()">+ Add Staff</button>
+        <div class="live-list" id="stfList"></div>
+      </div>
+      <button class="btn-publish" onclick="publishAll()">✓ Publish to Portal</button>
+    </div>
+
+    <!-- EXECUTIVE -->
+    <div class="panel" id="executivePanel">
+      <div class="panel-title">Manage Executives</div>
+      <div class="panel-sub">Add executive profiles visible on customer portal</div>
+      <div class="form-section">
+        <div class="form-section-title">Add Executive</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Full Name</label><input type="text" class="form-control" id="excName" placeholder="Full name"/></div>
+          <div class="form-group"><label class="form-label">Title / Role</label><input type="text" class="form-control" id="excRole" placeholder="e.g. Chief Executive Officer"/></div>
+        </div>
+        <div class="form-group"><label class="form-label">Division</label><input type="text" class="form-control" id="excDept" placeholder="e.g. Executive Leadership"/></div>
+        <button class="btn-add" onclick="addExec()">+ Add Executive</button>
+        <div class="live-list" id="excList"></div>
+      </div>
+      <button class="btn-publish" onclick="publishAll()">✓ Publish to Portal</button>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- PIN CHANGE MODAL -->
+<div id="pinModal">
+  <div class="modal-box">
+    <div class="modal-title">Change Access PIN</div>
+    <div class="form-group"><label class="form-label">Current PIN</label><input type="password" class="form-control" id="curPin" maxlength="4" placeholder="Current 4-digit PIN" inputmode="numeric"/></div>
+    <div class="form-group"><label class="form-label">New PIN</label><input type="password" class="form-control" id="newPin" maxlength="4" placeholder="New 4-digit PIN" inputmode="numeric"/></div>
+    <div class="form-group"><label class="form-label">Confirm New PIN</label><input type="password" class="form-control" id="conPin" maxlength="4" placeholder="Confirm new PIN" inputmode="numeric"/></div>
+    <div class="modal-err" id="pinModalErr"></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closePinModal()">Cancel</button>
+      <button class="btn-save" onclick="savePin()">Save PIN</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast">✓ Published to portal!</div>
+<script src="w,control.js"></script>
+</body>
+</html>
