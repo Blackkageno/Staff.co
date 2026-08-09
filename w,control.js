@@ -6,21 +6,46 @@ const DEFAULT_PIN = '5460';
 const SYNC_CHANNEL = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('lugares-sync') : null;
 
 // ── STORAGE HELPERS ──
+// Persistent data is stored locally in the browser using localStorage.
+// This keeps the worker panel state available between reloads and browser restarts.
 let firebaseRequests = [];
-function getData(){try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')}catch{return{}}}
-function saveData(d){
-  localStorage.setItem(STORAGE_KEY,JSON.stringify(d));
-  if(SYNC_CHANNEL){
-    SYNC_CHANNEL.postMessage({type:'workspace-updated', storageKey:STORAGE_KEY, payload:d});
+function getData(){
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  } catch {
+    return {};
   }
 }
-function getRequests(){
-  // Use Firebase data if available, fallback to localStorage
-  if(firebaseRequests && firebaseRequests.length > 0) return firebaseRequests;
-  try{return JSON.parse(localStorage.getItem(REQ_KEY)||'[]')}catch{return[]}
+function saveData(d){
+  // Save current workspace data to localStorage
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(d));
+  if (SYNC_CHANNEL) {
+    // Notify other open tabs/windows of data changes
+    SYNC_CHANNEL.postMessage({type:'workspace-updated', storageKey:STORAGE_KEY, payload:d});
+  }
+  if (typeof firebase !== 'undefined' && firebase.database) {
+        firebase.database().ref('portalData').set(d)
+            .then(() => console.log('Successfully synced to Firebase!'))
+            .catch(err => console.error('Firebase sync error:', err));
+    }
 }
-function saveRequests(r){localStorage.setItem(REQ_KEY,JSON.stringify(r))}
-function getPin(){return localStorage.getItem(PIN_KEY)||DEFAULT_PIN}
+function getRequests(){
+  // Firebase is the preferred source for live requests when available.
+  // If Firebase data is not loaded yet, fallback to the locally cached request list.
+  if (firebaseRequests && firebaseRequests.length > 0) return firebaseRequests;
+  try {
+    return JSON.parse(localStorage.getItem(REQ_KEY) || '[]');
+  } catch {
+    return [];
+  }
+}
+function saveRequests(r){
+  localStorage.setItem(REQ_KEY, JSON.stringify(r));
+}
+function getPin(){
+  // Store and read the current PIN locally.
+  return localStorage.getItem(PIN_KEY) || DEFAULT_PIN;
+}
 
 // ── FIREBASE SYNC ──
 function watchFirebaseRequests(){
@@ -43,6 +68,8 @@ function handleWorkerMessage(event){
   if(!event.data || typeof event.data !== 'object') return;
   if(event.data.type === 'portal-opened'){
     console.log('Worker panel received portal-opened:', event.data);
+    // Send current workspace to opener so portal can sync immediately
+    try{ postToOpener('worker-published', getData()); }catch(e){console.warn('Replying to portal failed', e); }
   }
 }
 
@@ -50,6 +77,13 @@ function initWindowBridge(){
   window.addEventListener('message', handleWorkerMessage);
   if(window.opener){
     window.opener.postMessage({type:'worker-ready'}, '*');
+  }
+}
+
+function postToOpener(type, payload){
+  if(window.opener){
+    try{ window.opener.postMessage({type, storageKey:STORAGE_KEY, payload}, '*'); }
+    catch(e){ console.warn('postMessage to opener failed', e); }
   }
 }
 
@@ -179,8 +213,10 @@ function addService(){
   if(!name){alert('Service name required');return}
   const d=getData();
   d.services=d.services||[];
-  d.services.push({name,icon:document.getElementById('svcIcon').value||'⚙️',tag:document.getElementById('svcTag').value||'Service',desc:document.getElementById('svcDesc').value});
+  const newItem={name,icon:document.getElementById('svcIcon').value||'⚙️',tag:document.getElementById('svcTag').value||'Service',desc:document.getElementById('svcDesc').value};
+  d.services.push(newItem);
   saveData(d);
+  postToOpener('service-added',{key:'services',item:newItem,full:d});
   ['svcName','svcIcon','svcTag','svcDesc'].forEach(id=>document.getElementById(id).value='');
   renderLists();
 }
@@ -191,8 +227,10 @@ function addProject(){
   if(!name){alert('Project name required');return}
   const d=getData();
   d.projects=d.projects||[];
-  d.projects.push({name,status:document.getElementById('prjStatus').value,location:document.getElementById('prjLocation').value,category:document.getElementById('prjCat').value,desc:document.getElementById('prjDesc').value});
+  const newItem={name,status:document.getElementById('prjStatus').value,location:document.getElementById('prjLocation').value,category:document.getElementById('prjCat').value,desc:document.getElementById('prjDesc').value};
+  d.projects.push(newItem);
   saveData(d);
+  postToOpener('project-added',{key:'projects',item:newItem,full:d});
   ['prjName','prjLocation','prjCat','prjDesc'].forEach(id=>document.getElementById(id).value='');
   renderLists();
 }
@@ -203,8 +241,10 @@ function addStaff(){
   if(!name){alert('Name required');return}
   const d=getData();
   d.staff=d.staff||[];
-  d.staff.push({name,role:document.getElementById('stfRole').value,dept:document.getElementById('stfDept').value});
+  const newItem={name,role:document.getElementById('stfRole').value,dept:document.getElementById('stfDept').value};
+  d.staff.push(newItem);
   saveData(d);
+  postToOpener('staff-added',{key:'staff',item:newItem,full:d});
   ['stfName','stfRole','stfDept'].forEach(id=>document.getElementById(id).value='');
   renderLists();
 }
@@ -215,8 +255,10 @@ function addExec(){
   if(!name){alert('Name required');return}
   const d=getData();
   d.executives=d.executives||[];
-  d.executives.push({name,role:document.getElementById('excRole').value,dept:document.getElementById('excDept').value});
+  const newItem={name,role:document.getElementById('excRole').value,dept:document.getElementById('excDept').value};
+  d.executives.push(newItem);
   saveData(d);
+  postToOpener('executive-added',{key:'executives',item:newItem,full:d});
   ['excName','excRole','excDept'].forEach(id=>document.getElementById(id).value='');
   renderLists();
 }
@@ -240,8 +282,10 @@ function renderLists(){
 }
 function removeItem(key,idx){
   const d=getData();
-  if(d[key])d[key].splice(idx,1);
+  let removed = null;
+  if(d[key]) removed = d[key].splice(idx,1)[0];
   saveData(d);renderLists();
+  postToOpener('item-removed',{key,removed,full:d});
 }
 
 // ── PUBLISH ──
@@ -259,7 +303,9 @@ function publishAll(){
 // ── CLEAR ALL ──
 function clearAll(){
   if(confirm('Clear ALL portal data? Staff, services, projects, executives will be removed.')){
-    saveData({});renderLists();refreshDash();showToast('All data cleared.');}
+    saveData({});renderLists();refreshDash();showToast('All data cleared.');
+    postToOpener('data-cleared',{});
+  }
 }
 function showToast(msg){
   const t=document.getElementById('toast');
